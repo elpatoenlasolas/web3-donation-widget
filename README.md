@@ -17,7 +17,7 @@ Cafecito Web3 is a simple web app that lets users support creators with crypto p
 ### Usage
 
 1. Clone or download this repository.
-2. Open `index.html` in your browser.
+2. Add the `index.html` snippet to your website.
 
 ## Technologies
 
