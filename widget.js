@@ -28,6 +28,7 @@
         .donate-init-btn:active {
             transform: scale(0.98);
         }
+        /* Modal de donación */
         .donation-modal {
             display: none;
             position: fixed;
@@ -154,6 +155,7 @@
             background: #00cc88;
             color: #ffffff;
         }
+        /* Modal de confirmación */
         .confirmation-modal {
             display: none;
             position: fixed;
@@ -197,6 +199,7 @@
         .confirmation-close-btn:hover {
             background: #00b377;
         }
+        /* Animación */
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.9); }
             to { opacity: 1; transform: scale(1); }
@@ -214,6 +217,7 @@
     `;
     document.head.appendChild(style);
 
+    // Inyectar HTML del widget
     container.innerHTML = `
         <div class="donation-widget-container">
             <button class="donate-init-btn">DONATE</button>
@@ -248,11 +252,13 @@
         </div>
     `;
 
+    // Cargar ethers.js dinámicamente
     const ethersScript = document.createElement('script');
     ethersScript.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
     ethersScript.onload = initializeWidget;
     document.head.appendChild(ethersScript);
 
+    // Inicializar lógica
     function initializeWidget() {
         const donateInitBtn = container.querySelector('.donate-init-btn');
         const donationModal = container.querySelector('#donation-modal');
@@ -267,20 +273,24 @@
         const confirmationCloseBtn = container.querySelector('.confirmation-close-btn');
         const transactionHash = container.querySelector('#transaction-hash');
 
+        // Abrir modal de donación
         donateInitBtn.addEventListener('click', () => {
             donationModal.style.display = 'flex';
         });
 
+        // Cerrar modal de donación
         donationCloseBtn.addEventListener('click', () => {
             donationModal.style.display = 'none';
             resetMessages();
         });
 
+        // Cerrar modal de confirmación
         confirmationCloseBtn.addEventListener('click', () => {
             confirmationModal.style.display = 'none';
-            donationModal.style.display = 'none';
+            donationModal.style.display = 'none'; // Cerrar ambos modales
         });
 
+        // Conectar wallet
         async function connectWallet() {
             if (window.ethereum) {
                 try {
@@ -298,12 +308,14 @@
         }
         connectBtn.addEventListener('click', connectWallet);
 
+        // Desconectar wallet
         disconnectBtn.addEventListener('click', () => {
             walletStatusText.textContent = 'Not connected';
             disconnectBtn.style.display = 'none';
             connectBtn.style.display = 'inline-block';
         });
 
+        // Enviar donación
         donationForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const amount = parseFloat(container.querySelector('#donation-amount').value);
@@ -338,6 +350,7 @@
             }
         });
 
+        // Helpers para mensajes
         function resetMessages() {
             errorMessage.style.display = 'none';
             successMessage.style.display = 'none';
