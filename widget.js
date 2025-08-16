@@ -1,8 +1,11 @@
 (function() {
     const container = document.getElementById('donation-widget');
-    if (!container) return;
+    if (!container) {
+        console.error('Donation widget container not found. Please ensure there is a <div id="donation-widget"> in your HTML.');
+        return;
+    }
 
-    const recipientAddress = container.getAttribute('data-recipient') || 'your-wallet-address';
+    const recipientAddress = container.getAttribute('data-recipient') || null;
     const minDonation = parseFloat(container.getAttribute('data-min-donation') || '0.001');
 
     const style = document.createElement('style');
@@ -214,46 +217,60 @@
     `;
     document.head.appendChild(style);
 
-    container.innerHTML = `
-        <div class="donation-widget-container">
-            <button class="donate-init-btn">DONATE</button>
-            <div class="donation-modal" id="donation-modal">
-                <div class="donation-modal-content">
-                    <header>
-                        <h2>Support this project</h2>
-                        <button aria-label="Close donation modal" class="close-btn">×</button>
-                    </header>
-                    <form id="donation-form">
-                        <label for="donation-amount">Amount (ETH)</label>
-                        <input type="number" id="donation-amount" step="0.001" min="${minDonation}" placeholder="${minDonation}" required>
-                        <p class="hint">Minimum donation is ${minDonation} ETH</p>
-                        <button type="submit" class="donate-btn">Send Donation</button>
-                        <p class="error-message" id="error-message">The minimum donation is ${minDonation} ETH</p>
-                        <p class="success-message" id="success-message">Processing donation...</p>
-                    </form>
-                    <div class="wallet-status">
-                        <span id="wallet-status-text">Not connected</span>
-                        <button type="button" class="connect-btn" id="connect-btn">Connect Wallet</button>
-                        <button type="button" class="disconnect-btn" id="disconnect-btn" style="display: none;">Disconnect</button>
-                    </div>
-                </div>
-            </div>
-            <div class="confirmation-modal" id="confirmation-modal">
-                <div class="confirmation-modal-content">
-                    <h3>Donation Successful!</h3>
-                    <p id="transaction-hash">Transaction Hash: Loading...</p>
-                    <button class="confirmation-close-btn">Close</button>
-                </div>
-            </div>
-        </div>
-    `;
-
+    // Load ethers.js
     const ethersScript = document.createElement('script');
     ethersScript.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
+    ethersScript.onerror = () => {
+        console.error('Failed to load ethers.js. Please check your internet connection or try again later.');
+        container.innerHTML = '<p style="color: red; font-family: Arial, sans-serif;">Error: Failed to load donation widget. Please try again later.</p>';
+    };
     ethersScript.onload = initializeWidget;
     document.head.appendChild(ethersScript);
 
     function initializeWidget() {
+        // Validate recipient address after ethers.js is loaded
+        if (!recipientAddress || !ethers.utils.isAddress(recipientAddress)) {
+            console.error('Invalid recipient address in data-recipient attribute. Please provide a valid Ethereum address (e.g., 0x123...).');
+            container.innerHTML = '<p style="color: red; font-family: Arial, sans-serif;">Error: Invalid recipient address. Please contact the website owner to fix the donation widget configuration.</p>';
+            return;
+        }
+
+        // Render widget UI
+        container.innerHTML = `
+            <div class="donation-widget-container">
+                <button class="donate-init-btn">DONATE</button>
+                <div class="donation-modal" id="donation-modal">
+                    <div class="donation-modal-content">
+                        <header>
+                            <h2>Support this project</h2>
+                            <button aria-label="Close donation modal" class="close-btn">×</button>
+                        </header>
+                        <form id="donation-form">
+                            <label for="donation-amount">Amount (ETH)</label>
+                            <input type="number" id="donation-amount" step="0.001" min="${minDonation}" placeholder="${minDonation}" required>
+                            <p class="hint">Minimum donation is ${minDonation} ETH</p>
+                            <button type="submit" class="donate-btn">Send Donation</button>
+                            <p class="error-message" id="error-message">The minimum donation is ${minDonation} ETH</p>
+                            <p class="success-message" id="success-message">Processing donation...</p>
+                        </form>
+                        <div class="wallet-status">
+                            <span id="wallet-status-text">Not connected</span>
+                            <button type="button" class="connect-btn" id="connect-btn">Connect Wallet</button>
+                            <button type="button" class="disconnect-btn" id="disconnect-btn" style="display: none;">Disconnect</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="confirmation-modal" id="confirmation-modal">
+                    <div class="confirmation-modal-content">
+                        <h3>Donation Successful!</h3>
+                        <p id="transaction-hash">Transaction Hash: Loading...</p>
+                        <button class="confirmation-close-btn">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Initialize event listeners
         const donateInitBtn = container.querySelector('.donate-init-btn');
         const donationModal = container.querySelector('#donation-modal');
         const confirmationModal = container.querySelector('#confirmation-modal');
@@ -293,7 +310,7 @@
                     showError('Failed to connect wallet. Please try again.');
                 }
             } else {
-                showError('Please install MetaMask!');
+                showError('Please install MetaMask or another Ethereum wallet!');
             }
         }
         connectBtn.addEventListener('click', connectWallet);
@@ -334,7 +351,11 @@
                 successMessage.style.display = 'none';
             } catch (error) {
                 console.error('Error sending donation:', error);
-                showError('Failed to send donation. Please try again.');
+                let errorMsg = 'Failed to send donation. Please try again.';
+                if (error.code === 'UNSUPPORTED_OPERATION' && error.operation === 'getResolver') {
+                    errorMsg = 'ENS names are not supported on this network. Please use a valid Ethereum address.';
+                }
+                showError(errorMsg);
             }
         });
 
@@ -342,6 +363,7 @@
             errorMessage.style.display = 'none';
             successMessage.style.display = 'none';
         }
+
         function showError(msg) {
             errorMessage.textContent = msg;
             errorMessage.style.display = 'block';
